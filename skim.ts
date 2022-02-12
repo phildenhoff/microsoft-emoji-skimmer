@@ -94,6 +94,7 @@ const downloadCategoryStickers = async (
 
   const svgs = collectedStickers.map((sticker) => ({
     url: sticker.assets.svg,
+    name: sticker.name,
     pos: sticker.position,
   }));
 
@@ -101,22 +102,21 @@ const downloadCategoryStickers = async (
   Deno.mkdirSync(folderName, { recursive: true });
 
   return Promise.allSettled(
-    svgs.map(async ({ url: svg, pos }) => {
-      const filename = svg.split("/").pop() || svg;
-      const filepath = `${folderName}/${pos}-${filename}`;
+    svgs.map(async ({ url, pos, name }) => {
+      const filepath = `${folderName}/${pos}-${name}.svg`;
 
-      const result = await fetch(svg);
+      const result = await fetch(url);
       switch (result.status) {
         case 200: {
           const data = await result.arrayBuffer();
           Deno.writeFileSync(filepath, new Uint8Array(data));
-          return Promise.resolve(svg);
+          return Promise.resolve(url);
         }
         default:
           console.error(
-            `Request for ${svg} failed: ${result.status} ${result.statusText}`
+            `Request for ${url} failed: ${result.status} ${result.statusText}`
           );
-          return Promise.reject(svg);
+          return Promise.reject(url);
       }
     })
   );
