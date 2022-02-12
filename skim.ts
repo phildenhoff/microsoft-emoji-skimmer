@@ -14,9 +14,6 @@ import {
 
 const baseUrl = "https://api.flipgrid.com/api/sticker_categories";
 
-const logger = (msg: string) => {
-  console.log(msg);
-};
 
 type SelectableCategory = Pick<CategoryType, "id" | "name" | "sticker_count">;
 
@@ -56,7 +53,13 @@ const promptChooseCategory = async (
   return ok(selectableCategories[selectedIndex]);
 };
 
+
+
 const main = async () => {
+  const logger = (msg: string) => {
+    console.log(msg);
+  };
+
   const categories = await downloadCategories(baseUrl);
 
   const maybeSelectedCategory = await promptChooseCategory(categories);
@@ -85,7 +88,8 @@ const main = async () => {
   const svgs = collectedStickers.map((sticker) => ({ url: sticker.assets.svg, pos: sticker.position }));
   svgs.forEach(({url: svg, pos}) => {
     const filename = svg.split("/").pop() || svg;
-    const folder = 'originals';
+    const folder = `originals/${selectedCategory.name}`;
+    Deno.mkdirSync(folder, {recursive: true, });
     const filepath = `${folder}/${pos}-${filename}`;
     fetch(svg).then((result) => {
       result.blob().then((blob) => {
