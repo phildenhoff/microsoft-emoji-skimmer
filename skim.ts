@@ -16,7 +16,6 @@ import { Checkbox } from "https://deno.land/x/cliffy@v0.20.1/prompt/checkbox.ts"
 
 const baseUrl = "https://api.flipgrid.com/api/sticker_categories";
 
-
 type SelectableCategory = Pick<CategoryType, "id" | "name" | "sticker_count">;
 
 type InvalidSelectionError = {
@@ -64,31 +63,36 @@ const downloadCategoryStickers = async (
   let offset = 1;
   do {
     logger(`Downloading page ${offset}`);
-    await fetch(
-      baseUrl + `/${selectedCategory.id}/stickers?page=${offset}`
-    ).then(async (result) => {
-      const body: QueryStickersRes = await result.json();
-      collectedStickers.push(...body.data);
-    }).catch(err => {
-      console.log(err);
-    });
+    await fetch(baseUrl + `/${selectedCategory.id}/stickers?page=${offset}`)
+      .then(async (result) => {
+        const body: QueryStickersRes = await result.json();
+        collectedStickers.push(...body.data);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
     offset += 1;
   } while (collectedStickers.length < selectedCategory.sticker_count);
 
-  logger('Downloading SVGs');
-  const svgs = collectedStickers.map((sticker) => ({ url: sticker.assets.svg, pos: sticker.position }));
-  svgs.forEach(({url: svg, pos}) => {
+  logger("Downloading SVGs");
+  const svgs = collectedStickers.map((sticker) => ({
+    url: sticker.assets.svg,
+    pos: sticker.position,
+  }));
+  svgs.forEach(({ url: svg, pos }) => {
     const filename = svg.split("/").pop() || svg;
     const folder = `originals/${selectedCategory.name}`;
-    Deno.mkdirSync(folder, {recursive: true, });
+    Deno.mkdirSync(folder, { recursive: true });
     const filepath = `${folder}/${pos}-${filename}`;
-    fetch(svg).then((result) => {
-      result.blob().then((blob) => {
-        blob.text().then((content) => Deno.writeTextFile(filepath, content));
+    fetch(svg)
+      .then((result) => {
+        result.blob().then((blob) => {
+          blob.text().then((content) => Deno.writeTextFile(filepath, content));
+        });
+      })
+      .catch((err) => {
+        console.log("Error downloading SVG", err);
       });
-    }).catch(err => {
-      console.log('Error downloading SVG', err);
-    });
   });
 };
 
@@ -99,18 +103,23 @@ const main = async () => {
   );
 
   const selectedCategoriesIds: string[] = await Checkbox.prompt({
-    message: "Choose categories to download (space to select, enter to continue)",
+    message:
+      "Choose categories to download (space to select, enter to continue)",
     options: categories.map((c: SelectableCategory) => ({
       name: c.name,
-      value: c.id.toString()
+      value: c.id.toString(),
     })),
   });
-  const selectedCategories = selectedCategoriesIds.map((id) => categoryById.get(parseInt(id)) as SelectableCategory);
+  const selectedCategories = selectedCategoriesIds.map(
+    (id) => categoryById.get(parseInt(id)) as SelectableCategory
+  );
 
-  await Promise.all(selectedCategories.map((category) => {
-    downloadCategoryStickers(category);
-  }));
- logger("Downloads complete");
+  await Promise.all(
+    selectedCategories.map((category) => {
+      downloadCategoryStickers(category);
+    })
+  );
+  logger("Downloads complete");
 };
 
 main();
