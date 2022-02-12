@@ -7,7 +7,7 @@ Rips SVGs of Microsoft's new Fluent Design emoji from Flipgrid.
 You'll need [Deno](https://deno.land/) installed.
 
 ```
-deno run --allow-net --allow-write skim.ts
+deno run --allow-net --allow-write --unstable skim.ts
 ```
 
 
