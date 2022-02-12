@@ -10,7 +10,7 @@ import {
   QueryCategoriesRes,
   Sticker,
   QueryStickersRes,
-} from "./response";
+} from "./response.d.ts";
 
 const baseUrl = "https://api.flipgrid.com/api/sticker_categories";
 
@@ -29,7 +29,7 @@ const downloadCategories = async (
 ): Promise<SelectableCategory[]> => {
   return await fetch(baseUrl).then(async (result) => {
     const body: QueryCategoriesRes = await result.json();
-    return body.data.map((category) => {
+    return body.data.map((category: CategoryType) => {
       return {
         id: category.id,
         name: category.name,
@@ -47,17 +47,7 @@ const promptChooseCategory = async (
     selectableCategories.map((c) => `${c.name} ${c.id}`)
   );
   const selectedIndex = chosenValues.indexOf(true);
-  if (selectedIndex === -1) {
-    return fail({
-      message: "You must select an item.",
-    } as InvalidSelectionError);
-  }
-  if (selectedIndex < 0) {
-    return fail({
-      message: "You must select an item.",
-    } as InvalidSelectionError);
-  }
-  if (selectedIndex < 0) {
+  if (selectedIndex <= -1) {
     return fail({
       message: "You must select an item in the list.",
     } as InvalidSelectionError);
@@ -85,6 +75,8 @@ const main = async () => {
     ).then(async (result) => {
       const body: QueryStickersRes = await result.json();
       collectedStickers.push(...body.data);
+    }).catch(err => {
+      console.log(err);
     });
     offset += 1;
   } while (collectedStickers.length < selectedCategory.sticker_count);
@@ -99,6 +91,8 @@ const main = async () => {
       result.blob().then((blob) => {
         blob.text().then((content) => Deno.writeTextFile(filepath, content));
       });
+    }).catch(err => {
+      console.log('Error downloading SVG', err);
     });
   });
 };
