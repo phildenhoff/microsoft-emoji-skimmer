@@ -110,7 +110,7 @@ const main = async () => {
   await Promise.all(selectedCategories.map((category) => {
     downloadCategoryStickers(category);
   }));
-  console.log("Downloads complete");
+ logger("Downloads complete");
 };
 
 main();
