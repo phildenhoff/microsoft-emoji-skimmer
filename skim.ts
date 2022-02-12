@@ -12,6 +12,8 @@ import {
   QueryStickersRes,
 } from "./response.d.ts";
 
+import { Checkbox } from "https://deno.land/x/cliffy@v0.20.1/prompt/checkbox.ts";
+
 const baseUrl = "https://api.flipgrid.com/api/sticker_categories";
 
 
@@ -20,6 +22,8 @@ type SelectableCategory = Pick<CategoryType, "id" | "name" | "sticker_count">;
 type InvalidSelectionError = {
   message: string;
 };
+
+const logger = (msg: string) => console.log(msg);
 
 const downloadCategories = async (
   baseUrl: string
@@ -53,22 +57,9 @@ const promptChooseCategory = async (
   return ok(selectableCategories[selectedIndex]);
 };
 
-
-
-const main = async () => {
-  const logger = (msg: string) => {
-    console.log(msg);
-  };
-
-  const categories = await downloadCategories(baseUrl);
-
-  const maybeSelectedCategory = await promptChooseCategory(categories);
-  if (maybeSelectedCategory.isFail() === true) {
-    console.log(maybeSelectedCategory);
-    Deno.exit();
-  }
-  const selectedCategory = maybeSelectedCategory.unwrap();
-
+const downloadCategoryStickers = async (
+  selectedCategory: SelectableCategory
+): Promise<void> => {
   const collectedStickers: Sticker[] = [];
   let offset = 1;
   do {
@@ -99,6 +90,27 @@ const main = async () => {
       console.log('Error downloading SVG', err);
     });
   });
+};
+
+const main = async () => {
+  const categories = await downloadCategories(baseUrl);
+  const categoryById = new Map<number, SelectableCategory>(
+    categories.map((category) => [category.id, category])
+  );
+
+  const selectedCategoriesIds: string[] = await Checkbox.prompt({
+    message: "Choose categories to download (space to select, enter to continue)",
+    options: categories.map((c: SelectableCategory) => ({
+      name: c.name,
+      value: c.id.toString()
+    })),
+  });
+  const selectedCategories = selectedCategoriesIds.map((id) => categoryById.get(parseInt(id)) as SelectableCategory);
+
+  await Promise.all(selectedCategories.map((category) => {
+    downloadCategoryStickers(category);
+  }));
+  console.log("Downloads complete");
 };
 
 main();
