@@ -1,10 +1,3 @@
-import InputLoop from "https://deno.land/x/input@2.0.2/index.ts";
-import {
-  fail,
-  ok,
-  TResultAsync,
-} from "https://deno.land/x/result@5.0.0/mod.ts";
-
 import {
   CategoryType,
   QueryCategoriesRes,
@@ -20,10 +13,6 @@ import Spinner from "https://deno.land/x/cli_spinners@v0.0.2/mod.ts";
 const baseUrl = "https://api.flipgrid.com/api/sticker_categories";
 
 type SelectableCategory = Pick<CategoryType, "id" | "name" | "sticker_count">;
-
-type InvalidSelectionError = {
-  message: string;
-};
 
 type LogMessage = (msg: string) => void;
 interface ILogger {
