@@ -13,6 +13,9 @@ import {
 } from "./response.d.ts";
 
 import { Checkbox } from "https://deno.land/x/cliffy@v0.20.1/prompt/checkbox.ts";
+import { Confirm } from "https://deno.land/x/cliffy@v0.20.1/prompt/confirm.ts";
+
+import Spinner from "https://deno.land/x/cli_spinners@v0.0.2/mod.ts";
 
 const baseUrl = "https://api.flipgrid.com/api/sticker_categories";
 
@@ -22,7 +25,40 @@ type InvalidSelectionError = {
   message: string;
 };
 
-const logger = (msg: string) => console.log(msg);
+type LogMessage = (msg: string) => void;
+interface ILogger {
+  info: LogMessage;
+  debug: LogMessage;
+  warn: LogMessage;
+  error: LogMessage;
+}
+
+const prodLogger = () => {
+  return {
+    info: () => {},
+    debug: () => {},
+    warn: console.warn,
+    error: console.error,
+  };
+};
+
+const devLogger = () => {
+  return {
+    info: console.log,
+    debug: console.debug,
+    warn: console.warn,
+    error: console.error,
+  };
+};
+
+export const getLogger = (): ILogger => {
+  if (Deno.env.get("NODE_ENV") === "production") {
+    return prodLogger();
+  }
+  return devLogger();
+};
+
+const logger = getLogger();
 
 const downloadCategories = async (
   baseUrl: string
@@ -39,30 +75,12 @@ const downloadCategories = async (
   });
 };
 
-const promptChooseCategory = async (
-  selectableCategories: SelectableCategory[]
-): TResultAsync<SelectableCategory, InvalidSelectionError> => {
-  const input = new InputLoop();
-  const chosenValues: boolean[] = await input.choose(
-    selectableCategories.map((c) => `${c.name} ${c.id}`)
-  );
-  const selectedIndex = chosenValues.indexOf(true);
-  if (selectedIndex <= -1) {
-    return fail({
-      message: "You must select an item in the list.",
-    } as InvalidSelectionError);
-  }
-
-  return ok(selectableCategories[selectedIndex]);
-};
-
 const downloadCategoryStickers = async (
   selectedCategory: SelectableCategory
-): Promise<void> => {
+): Promise<PromiseSettledResult<string>[]> => {
   const collectedStickers: Sticker[] = [];
   let offset = 1;
   do {
-    logger(`Downloading page ${offset}`);
     await fetch(baseUrl + `/${selectedCategory.id}/stickers?page=${offset}`)
       .then(async (result) => {
         const body: QueryStickersRes = await result.json();
@@ -74,35 +92,44 @@ const downloadCategoryStickers = async (
     offset += 1;
   } while (collectedStickers.length < selectedCategory.sticker_count);
 
-  logger("Downloading SVGs");
   const svgs = collectedStickers.map((sticker) => ({
     url: sticker.assets.svg,
     pos: sticker.position,
   }));
-  svgs.forEach(({ url: svg, pos }) => {
-    const filename = svg.split("/").pop() || svg;
-    const folder = `originals/${selectedCategory.name}`;
-    Deno.mkdirSync(folder, { recursive: true });
-    const filepath = `${folder}/${pos}-${filename}`;
-    fetch(svg)
-      .then((result) => {
-        result.blob().then((blob) => {
-          blob.text().then((content) => Deno.writeTextFile(filepath, content));
-        });
-      })
-      .catch((err) => {
-        console.log("Error downloading SVG", err);
-      });
-  });
+
+  const folderName = `originals/${selectedCategory.name}`;
+  Deno.mkdirSync(folderName, { recursive: true });
+
+  return Promise.allSettled(
+    svgs.map(async ({ url: svg, pos }) => {
+      const filename = svg.split("/").pop() || svg;
+      const filepath = `${folderName}/${pos}-${filename}`;
+
+      const result = await fetch(svg);
+      switch (result.status) {
+        case 200: {
+          const data = await result.arrayBuffer();
+          Deno.writeFileSync(filepath, new Uint8Array(data));
+          return Promise.resolve(svg);
+        }
+        default:
+          console.error(
+            `Request for ${svg} failed: ${result.status} ${result.statusText}`
+          );
+          return Promise.reject(svg);
+      }
+    })
+  );
 };
 
 const main = async () => {
+  const spinner = Spinner.getInstance();
   const categories = await downloadCategories(baseUrl);
   const categoryById = new Map<number, SelectableCategory>(
     categories.map((category) => [category.id, category])
   );
 
-  const selectedCategoriesIds: string[] = await Checkbox.prompt({
+  const selectedCategoriesIds = await Checkbox.prompt({
     message:
       "Choose categories to download (space to select, enter to continue)",
     options: categories.map((c: SelectableCategory) => ({
@@ -114,12 +141,41 @@ const main = async () => {
     (id) => categoryById.get(parseInt(id)) as SelectableCategory
   );
 
-  await Promise.all(
-    selectedCategories.map((category) => {
-      downloadCategoryStickers(category);
-    })
-  );
-  logger("Downloads complete");
+  spinner.start("Downloading stickers");
+  const allStickerDownloads = selectedCategories.map(downloadCategoryStickers);
+
+  // Wait for all sticker downloads to finish
+  const allCategoriesComplete = await Promise.allSettled(allStickerDownloads);
+
+  const failedDownloads: string[] = [];
+  allCategoriesComplete.forEach((combinedDownloadsPromise) => {
+    if (combinedDownloadsPromise.status === "rejected") {
+      logger.error("An error occured while all-settling the promise");
+      return false;
+    }
+
+    failedDownloads.push(
+      ...combinedDownloadsPromise.value
+        .filter((result) => result.status === "rejected")
+        .map((result) => (result as PromiseRejectedResult).reason)
+    );
+  });
+
+  if (failedDownloads.length === 0) {
+    await spinner.succeed("All stickers downloaded successfully");
+  } else {
+    await spinner.fail("Some stickers failed to download");
+
+    const confirmed = await Confirm.prompt(
+      "Do you want to view the list of failed downloads?"
+    );
+    if (confirmed) {
+      logger.error("Failed downloads: ");
+      failedDownloads.forEach((downloadResult) => {
+        console.error(downloadResult);
+      });
+    }
+  }
 };
 
 main();
