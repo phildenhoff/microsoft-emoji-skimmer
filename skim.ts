@@ -40,7 +40,7 @@ const devLogger = () => {
   };
 };
 
-export const getLogger = (): ILogger => {
+const getLogger = (): ILogger => {
   if (Deno.env.get("NODE_ENV") === "production") {
     return prodLogger();
   }
