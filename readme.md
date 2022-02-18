@@ -10,4 +10,7 @@ You'll need [Deno](https://deno.land/) installed.
 deno run --allow-net --allow-write --unstable skim.ts
 ```
 
+## Converting SVGs to PNGs
+
+Run `./convert-to-png.sh` using ZSH. You'll need rsvg-convert.
 
