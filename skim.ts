@@ -118,12 +118,15 @@ const main = async () => {
     categories.map((category) => [category.id, category])
   );
 
+  const defaultCategories = ["Emojis", "People", "Smilies"];
+
   const selectedCategoriesIds = await Checkbox.prompt({
     message:
       "Choose categories to download (space to select, enter to continue)",
     options: categories.map((c: SelectableCategory) => ({
       name: c.name,
       value: c.id.toString(),
+      checked: defaultCategories.includes(c.name),
     })),
   });
   const selectedCategories = selectedCategoriesIds.map(
