@@ -16,9 +16,13 @@ type SelectableCategory = Pick<CategoryType, "id" | "name" | "sticker_count">;
 
 type LogMessage = (msg: string) => void;
 interface ILogger {
+  /** Logs info messages. Usually not displayed to the user. */
   info: LogMessage;
+  /** Logs debug messages. Useful for trying to resolve an issue */
   debug: LogMessage;
+  /** Logs warning messages. The app can continue running. */
   warn: LogMessage;
+  /** Logs error messages */
   error: LogMessage;
 }
 
@@ -55,6 +59,7 @@ const downloadCategories = async (
   return await fetch(baseUrl).then(async (result) => {
     const body: QueryCategoriesRes = await result.json();
     return body.data.map((category: CategoryType) => {
+      logger.info(`Found category ${category.name}`);
       return {
         id: category.id,
         name: category.name,
@@ -76,7 +81,7 @@ const downloadCategoryStickers = async (
         collectedStickers.push(...body.data);
       })
       .catch((err) => {
-        console.log(err);
+        logger.error(err);
       });
     offset += 1;
   } while (collectedStickers.length < selectedCategory.sticker_count);
@@ -102,7 +107,7 @@ const downloadCategoryStickers = async (
           return Promise.resolve(url);
         }
         default:
-          console.error(
+          logger.error(
             `Request for ${url} failed: ${result.status} ${result.statusText}`
           );
           return Promise.reject(url);
@@ -164,7 +169,7 @@ const main = async () => {
     if (confirmed) {
       logger.error("Failed downloads: ");
       failedDownloads.forEach((downloadResult) => {
-        console.error(downloadResult);
+        logger.error(downloadResult);
       });
     }
   }
