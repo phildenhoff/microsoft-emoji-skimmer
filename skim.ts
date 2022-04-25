@@ -163,10 +163,10 @@ const main = async () => {
   } else {
     await spinner.fail("Some stickers failed to download");
 
-    const confirmed = await Confirm.prompt(
+    const shouldDisplayFailed = await Confirm.prompt(
       "Do you want to view the list of failed downloads?"
     );
-    if (confirmed) {
+    if (shouldDisplayFailed) {
       logger.error("Failed downloads: ");
       failedDownloads.forEach((downloadResult) => {
         logger.error(downloadResult);
