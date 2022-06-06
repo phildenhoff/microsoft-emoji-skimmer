@@ -5,18 +5,19 @@ import Spinner from "https://deno.land/x/cli_spinners@v0.0.2/mod.ts";
 import { getLogger } from "./util.ts";
 import { flipgrid } from "./sticker-source/flipgrid.ts";
 import { SelectableCategory } from "./sticker-source/response.d.ts";
+import { teams } from "./sticker-source/teams.ts";
 
 const logger = getLogger();
 
 const main = async () => {
   const spinner = Spinner.getInstance();
-  const sources = [flipgrid(logger)];
+  const sources = [flipgrid(logger), teams(logger)];
 
   // todo: make interactive
-  const source = sources[0];
+  const source = sources[1];
 
   const categories = await source.getCategories();
-  const categoryById = new Map<number, SelectableCategory>(
+  const categoryById = new Map<string, SelectableCategory>(
     categories.map((category) => [category.id, category])
   );
 
@@ -26,18 +27,18 @@ const main = async () => {
     message:
       "Choose categories to download (space to select, enter to continue)",
     options: categories.map((c: SelectableCategory) => ({
-      name: c.name,
+      name: c.title,
       value: c.id.toString(),
-      checked: defaultCategories.includes(c.name),
+      checked: defaultCategories.includes(c.title),
     })),
   });
   const selectedCategories = selectedCategoriesIds.map(
-    (id) => categoryById.get(parseInt(id)) as SelectableCategory
+    (id) => categoryById.get(id) as SelectableCategory
   );
 
   spinner.start("Downloading stickers");
   const allStickerDownloads = selectedCategories.map(
-    source.downloadStickersForCategory
+    source.downloadCategoryStickers
   );
 
   // Wait for all sticker downloads to finish

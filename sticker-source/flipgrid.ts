@@ -1,37 +1,54 @@
+import { Err, Ok, Result } from "https://deno.land/x/monads/mod.ts";
+
+import { SelectableCategory } from "./response.d.ts";
 import type {
   CategoryType,
   QueryCategoriesRes,
   QueryStickersRes,
-  SelectableCategory,
   Sticker,
-} from "./response.d.ts";
+} from "./response-flipgrid.d.ts";
 
 import type { CreateSource } from "./source.d.ts";
 
-const baseUrl = "https://api.flipgrid.com/api/sticker_categories";
+const BASE_URL = "https://api.flipgrid.com/api/sticker_categories";
 
 export const flipgrid: CreateSource = (logger) => {
+  const categories = new Map<string, CategoryType>();
+
+  /**
+   * Download the list of sticker categories from Flipgrid
+   */
   const downloadCategories = async (): Promise<SelectableCategory[]> => {
-    return await fetch(baseUrl).then(async (result) => {
+    return await fetch(BASE_URL).then(async (result) => {
       const body: QueryCategoriesRes = await result.json();
       return body.data.map((category: CategoryType) => {
         logger.info(`Found category ${category.name}`);
+        categories.set(category.id.toString(), category);
+
         return {
-          id: category.id,
-          name: category.name,
+          id: category.id.toString(),
+          title: category.name,
           sticker_count: category.sticker_count,
         } as SelectableCategory;
       });
     });
   };
 
+  /**
+   * Download all of the stickers within a category.
+   */
   const downloadCategoryStickers = async (
     selectedCategory: SelectableCategory
-  ): Promise<PromiseSettledResult<string>[]> => {
+  ): Promise<PromiseSettledResult<Result<string, Response>>[]> => {
+    if (!("sticker_count" in selectedCategory)) return Promise.reject([]);
+
     const collectedStickers: Sticker[] = [];
+    const stickerCount =
+      categories.get(selectedCategory.id.toString())?.sticker_count || 0;
+
     let offset = 1;
     do {
-      await fetch(baseUrl + `/${selectedCategory.id}/stickers?page=${offset}`)
+      await fetch(BASE_URL + `/${selectedCategory.id}/stickers?page=${offset}`)
         .then(async (result) => {
           const body: QueryStickersRes = await result.json();
           collectedStickers.push(...body.data);
@@ -40,19 +57,20 @@ export const flipgrid: CreateSource = (logger) => {
           logger.error(err);
         });
       offset += 1;
-    } while (collectedStickers.length < selectedCategory.sticker_count);
+    } while (collectedStickers.length < stickerCount);
 
     const svgs = collectedStickers.map((sticker) => ({
+      id: sticker.id,
       url: sticker.assets.svg,
       name: sticker.name,
       pos: sticker.position,
     }));
 
-    const folderName = `originals/${selectedCategory.name}`;
+    const folderName = `originals/${selectedCategory.title}`;
     Deno.mkdirSync(folderName, { recursive: true });
 
     return Promise.allSettled(
-      svgs.map(async ({ url, pos, name }) => {
+      svgs.map(async ({ url, pos, name, id }) => {
         const filepath = `${folderName}/${pos}-${name}.svg`;
 
         const result = await fetch(url);
@@ -60,13 +78,13 @@ export const flipgrid: CreateSource = (logger) => {
           case 200: {
             const data = await result.arrayBuffer();
             Deno.writeFileSync(filepath, new Uint8Array(data));
-            return Promise.resolve(url);
+            return Ok(id.toString());
           }
           default:
             logger.error(
               `Request for ${url} failed: ${result.status} ${result.statusText}`
             );
-            return Promise.reject(url);
+            return Err(result);
         }
       })
     );
@@ -75,6 +93,6 @@ export const flipgrid: CreateSource = (logger) => {
   return {
     name: "Flipgrid",
     getCategories: downloadCategories,
-    downloadStickersForCategory: downloadCategoryStickers,
+    downloadCategoryStickers: downloadCategoryStickers,
   };
 };

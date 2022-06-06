@@ -1,3 +1,5 @@
+import { Result } from "https://deno.land/x/monads/mod.ts";
+
 import { SelectableCategory } from "./response.d.ts";
 import { ILogger } from "../util.ts";
 
@@ -6,7 +8,7 @@ export type CreateSource = (logger: ILogger) => StickerSource;
 export type StickerSource = {
   name: string;
   getCategories: () => Promise<SelectableCategory[]>;
-  downloadStickersForCategory: (
+  downloadCategoryStickers: (
     category: SelectableCategory
-  ) => Promise<PromiseSettledResult<string>[]>;
+  ) => Promise<PromiseSettledResult<Result<string, Response>>[]>;
 };
