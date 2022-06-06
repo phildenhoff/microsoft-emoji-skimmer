@@ -4,7 +4,7 @@ import type {
   QueryStickersRes,
   SelectableCategory,
   Sticker,
-} from "../response.d.ts";
+} from "./response.d.ts";
 
 import type { CreateSource } from "./source.d.ts";
 

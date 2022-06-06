@@ -4,7 +4,7 @@ import Spinner from "https://deno.land/x/cli_spinners@v0.0.2/mod.ts";
 
 import { getLogger } from "./util.ts";
 import { flipgrid } from "./sticker-source/flipgrid.ts";
-import { SelectableCategory } from "./response.d.ts";
+import { SelectableCategory } from "./sticker-source/response.d.ts";
 
 const logger = getLogger();
 

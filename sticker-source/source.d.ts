@@ -1,4 +1,4 @@
-import { SelectableCategory } from "../response.d.ts";
+import { SelectableCategory } from "./response.d.ts";
 import { ILogger } from "../util.ts";
 
 export type CreateSource = (logger: ILogger) => StickerSource;
