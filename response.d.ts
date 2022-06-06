@@ -56,3 +56,8 @@ export type QueryStickersRes = {
   };
   data: Sticker[];
 };
+
+export type SelectableCategory = Pick<
+  CategoryType,
+  "id" | "name" | "sticker_count"
+>;
