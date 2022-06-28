@@ -15,18 +15,6 @@ export type Sticker = {
   assets: Image;
 };
 
-export type CategoryType = {
-  id: number;
-  name: string;
-  position: number;
-  per_row: number;
-  sticker_count: number;
-  updated_at: Date;
-  icons: Image;
-  stickers: Sticker[];
-  // [k: string]: string | number
-};
-
 export type QueryCategoriesRes = {
   data: CategoryType[];
 };
@@ -55,4 +43,16 @@ export type QueryStickersRes = {
     };
   };
   data: Sticker[];
+};
+
+export type CategoryType = {
+  id: number;
+  name: string;
+  position: number;
+  per_row: number;
+  sticker_count: number;
+  updated_at: Date;
+  icons: Image;
+  stickers: Sticker[];
+  // [k: string]: string | number
 };
