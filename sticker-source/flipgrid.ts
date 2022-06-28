@@ -8,7 +8,7 @@ import type {
   Sticker,
 } from "./response-flipgrid.d.ts";
 
-import type { CreateSource } from "./source.d.ts";
+import type { CreateSource, StickerDownloader, StickerSource } from "./source.d.ts";
 
 const BASE_URL = "https://api.flipgrid.com/api/sticker_categories";
 
@@ -37,11 +37,10 @@ export const flipgrid: CreateSource = (logger) => {
   /**
    * Download all of the stickers within a category.
    */
-  const downloadCategoryStickers = async (
-    selectedCategory: SelectableCategory
-  ): Promise<PromiseSettledResult<Result<string, Response>>[]> => {
-    if (!("sticker_count" in selectedCategory)) return Promise.reject([]);
-
+  const genStickerlistForCategories = (
+    categories: SelectableCategory[],
+    downloadLoc: string
+  ): StickerDownloader[] => {
     const collectedStickers: Sticker[] = [];
     const stickerCount =
       categories.get(selectedCategory.id.toString())?.sticker_count || 0;
@@ -71,14 +70,14 @@ export const flipgrid: CreateSource = (logger) => {
 
     return Promise.allSettled(
       svgs.map(async ({ url, pos, name, id }) => {
-        const filepath = `${folderName}/${pos}-${name}.svg`;
+        const filePath = `${folderName}/${pos}-${name}.svg`;
 
         const result = await fetch(url);
         switch (result.status) {
           case 200: {
             const data = await result.arrayBuffer();
-            Deno.writeFileSync(filepath, new Uint8Array(data));
-            return Ok(id.toString());
+            Deno.writeFileSync(filePath, new Uint8Array(data));
+            return Ok(filePath);
           }
           default:
             logger.error(
@@ -93,6 +92,6 @@ export const flipgrid: CreateSource = (logger) => {
   return {
     name: "Flipgrid",
     getCategories: downloadCategories,
-    downloadCategoryStickers: downloadCategoryStickers,
+    genStickerlistForCategories,
   };
 };

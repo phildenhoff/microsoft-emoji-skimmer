@@ -4,11 +4,13 @@ import { SelectableCategory } from "./response.d.ts";
 import { ILogger } from "../util.ts";
 
 export type CreateSource = (logger: ILogger) => StickerSource;
+export type StickerDownloader = () => Promise<Result<string, Response>>;
 
 export type StickerSource = {
   name: string;
   getCategories: () => Promise<SelectableCategory[]>;
-  downloadCategoryStickers: (
-    category: SelectableCategory
-  ) => Promise<PromiseSettledResult<Result<string, Response>>[]>;
+  genStickerlistForCategories: (
+    category: SelectableCategory[],
+    downloadLoc: string
+  ) => StickerDownloader[];
 };

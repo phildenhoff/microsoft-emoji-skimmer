@@ -10,11 +10,13 @@ import { Category, Emoticon } from "./response-teams.d.ts";
 
 import type { SelectableCategory } from "./response.d.ts";
 
-import { CreateSource } from "./source.d.ts";
+import { CreateSource, StickerSource } from "./source.d.ts";
 
 const BASE_URL =
   "https://statics.teams.cdn.office.net/evergreen-assets/personal-expressions/v2/assets/emoticons";
 const TEAMS_SETTINGS_URL = "https://teams.live.com/scripts/settings.js";
+
+export const isTeams = (source: StickerSource) => source.name === "Teams";
 
 const getLatestEmoticonHash = async (): Promise<Option<string>> => {
   const res = await fetch(TEAMS_SETTINGS_URL);
@@ -87,7 +89,8 @@ export const teams: CreateSource = (logger) => {
           case 200: {
             const data = await result.arrayBuffer();
             Deno.writeFileSync(filePath, new Uint8Array(data));
-            return Ok(sticker.id);
+            // Maybe post-process here? or add to a list for post-processing?
+            return Ok(filePath);
           }
           default:
             logger.error(
